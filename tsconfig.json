@@ -1,16 +1,25 @@
 {
-	"compilerOptions": {
-		"target": "es6",
-		"module": "commonjs",
-		"strict": true,
-		"noImplicitAny": false,
-		"esModuleInterop": true,
-		"moduleResolution": "node",
-		"lib": [
-			"es6"
-		]
-	},
-	"exclude": [
-		"node_modules"
-	]
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "lib": [
+      "es6"
+    ],
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true
+  },
+  "exclude": [
+    "node_modules"
+  ]
 }

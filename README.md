@@ -1,6 +1,6 @@
-# golang-test
+# golang-analysis
 
-This action runs `go test` and provides annotations from the output
+This action runs a set of [analysis.Analyzers](https://pkg.go.dev/golang.org/x/tools/go/analysis#Analyzer) in a [multichecker](https://pkg.go.dev/golang.org/x/tools/go/analysis/multichecker) and provides annotations from the output.  Needs to be tested!
 
 ## Inputs
 
@@ -8,12 +8,7 @@ All inputs are optional
 
 | Input | Type | Description | Default 
 --|--|--|--
-package | string | the package to run tests for | ./...
-args | string | semicolon delimited `go test` command line arguments |
-show-long-running-tests | number | outputs a yellow warning for tests that take longer than the given number of seconds to complete, -1 to disable | 30
-show-package-output | bool | includes additional package output in the log | false
-show-passed-tests | bool | hides output from passed tests in the log | true
-show-stdout | bool | shows the unparsed stdout from `go test` instead of the parsed output | false
+analyzers | string | semicolon delimited list of analyzers | go.sia.tech/jape.Analyzer
 
 ## Usage
 
@@ -32,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
-      - uses: n8maninger/action-golang-test@v1
+      - uses: SiaFoundation/action-golang-analysis@v1
 ```
 
 Pass command line arguments:
@@ -50,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
-      - uses: n8maninger/action-golang-test@v1
+      - uses: SiaFoundation/action-golang-analysis@v1
         with:
-          args: "-race;-failfast;-tags=testing debug netgo"
+          analyzers: "go.sia.tech/jape.Analyzer"
 ```

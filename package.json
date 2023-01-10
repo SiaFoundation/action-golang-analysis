@@ -11,7 +11,8 @@
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.9.1",
-    "@actions/exec": "^1.1.1"
+    "@actions/exec": "^1.1.1",
+    "prettier": "^2.8.2"
   },
   "devDependencies": {
     "@types/node": "^17.0.42",

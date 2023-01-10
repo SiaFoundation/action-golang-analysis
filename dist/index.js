@@ -3940,6 +3940,184 @@ exports["default"] = _default;
 
 /***/ }),
 
+/***/ 475:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding =
+    (this && this.__createBinding) ||
+    (Object.create
+        ? function (o, m, k, k2) {
+              if (k2 === undefined) k2 = k;
+              var desc = Object.getOwnPropertyDescriptor(m, k);
+              if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+                  desc = {
+                      enumerable: true,
+                      get: function () {
+                          return m[k];
+                      },
+                  };
+              }
+              Object.defineProperty(o, k2, desc);
+          }
+        : function (o, m, k, k2) {
+              if (k2 === undefined) k2 = k;
+              o[k2] = m[k];
+          });
+var __setModuleDefault =
+    (this && this.__setModuleDefault) ||
+    (Object.create
+        ? function (o, v) {
+              Object.defineProperty(o, "default", { enumerable: true, value: v });
+          }
+        : function (o, v) {
+              o["default"] = v;
+          });
+var __importStar =
+    (this && this.__importStar) ||
+    function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null)
+            for (var k in mod)
+                if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k))
+                    __createBinding(result, mod, k);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+var __awaiter =
+    (this && this.__awaiter) ||
+    function (thisArg, _arguments, P, generator) {
+        function adopt(value) {
+            return value instanceof P
+                ? value
+                : new P(function (resolve) {
+                      resolve(value);
+                  });
+        }
+        return new (P || (P = Promise))(function (resolve, reject) {
+            function fulfilled(value) {
+                try {
+                    step(generator.next(value));
+                } catch (e) {
+                    reject(e);
+                }
+            }
+            function rejected(value) {
+                try {
+                    step(generator["throw"](value));
+                } catch (e) {
+                    reject(e);
+                }
+            }
+            function step(result) {
+                result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected);
+            }
+            step((generator = generator.apply(thisArg, _arguments || [])).next());
+        });
+    };
+var __importDefault =
+    (this && this.__importDefault) ||
+    function (mod) {
+        return mod && mod.__esModule ? mod : { default: mod };
+    };
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.runTests = void 0;
+const exec_1 = __nccwpck_require__(514);
+const core = __importStar(__nccwpck_require__(186));
+const path_1 = __importDefault(__nccwpck_require__(17));
+const fs_1 = __nccwpck_require__(147);
+const fs_2 = __nccwpck_require__(147);
+const process_1 = __nccwpck_require__(282);
+function parseAnalyzerOutput(input) {
+    const lines = input.split("\n");
+    let annotations = [];
+    for (const line of lines) {
+        const split = line.split(":");
+        if (split.length != 4) {
+            continue;
+        }
+        annotations.push({ file: split[0], line: Number(split[1]), text: split[3] });
+    }
+    return annotations;
+}
+const getDirectories = (source) =>
+    (0, fs_1.readdirSync)(source, { withFileTypes: true })
+        .filter((dirent) => dirent.isDirectory())
+        .map((dirent) => dirent.name);
+function runTests() {
+    return __awaiter(this, void 0, void 0, function* () {
+        let program = "package main\n";
+        const analyzers = core.getInput("analyzers", { required: false }).split(";");
+        program += `import ("golang.org/x/tools/go/analysis/multichecker";`;
+        for (const analyzer of analyzers) {
+            program += `"` + analyzer.substring(0, analyzer.lastIndexOf(".")) + `";`;
+        }
+        program += ")\n";
+        program += "func main() {multichecker.Main(";
+        for (const analyzer of analyzers) {
+            program += analyzer.substring(analyzer.lastIndexOf("/") + 1) + ",";
+        }
+        program += ")}\n";
+        const source = (0, process_1.cwd)();
+        const dir = (0, process_1.cwd)() + "/.temp";
+        try {
+            (0, fs_2.rmSync)(dir, { recursive: true, force: true });
+        } catch (_a) {}
+        (0, fs_2.mkdirSync)(dir);
+        (0, fs_2.writeFileSync)(dir + "/check.go", program);
+        (0, process_1.chdir)(dir);
+        const packages = ["golang.org/x/tools/go/analysis/multichecker"];
+        for (const analyzer of analyzers) {
+            packages.push(analyzer.substring(0, analyzer.lastIndexOf(".")) + "@HEAD");
+        }
+        yield (0, exec_1.exec)("go", ["mod", "init", "temp"]);
+        yield (0, exec_1.exec)("go", ["get", ...packages]);
+        yield (0, exec_1.exec)("go", ["mod", "tidy"]);
+        yield (0, exec_1.exec)("go", ["build", "-o", "check"]);
+        (0, process_1.chdir)(source);
+        core.startGroup(`Analyzer output`);
+        const directories = getDirectories(".");
+        for (const directory of directories) {
+            if (directory.startsWith(".")) {
+                continue;
+            }
+            let output = "";
+            const options = {
+                ignoreReturnCode: true,
+                listeners: {
+                    stdout: (data) => {
+                        output += data.toString();
+                    },
+                    stderr: (data) => {
+                        output += data.toString();
+                    },
+                },
+            };
+            yield (0, exec_1.exec)(
+                dir + "/check",
+                ["./" + path_1.default.relative(".", directory)],
+                options
+            );
+            const annotations = parseAnalyzerOutput(output.toString());
+            for (const annotation of annotations) {
+                core.error(annotation.text, {
+                    title: `Analyzer warning in ${directory}`,
+                    file: path_1.default.relative(".", annotation.file),
+                    startLine: annotation.line,
+                });
+            }
+        }
+        core.endGroup();
+        (0, fs_2.rmSync)(dir, { recursive: true, force: true });
+    });
+}
+exports.runTests = runTests;
+
+
+/***/ }),
+
 /***/ 144:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -3979,7 +4157,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(186));
-const run_1 = __nccwpck_require__(764);
+const run_1 = __nccwpck_require__(475);
 (() => __awaiter(void 0, void 0, void 0, function* () {
     try {
         yield (0, run_1.runTests)();
@@ -3988,318 +4166,6 @@ const run_1 = __nccwpck_require__(764);
         core.setFailed(`failed to run action: ${ex}`);
     }
 }))();
-
-
-/***/ }),
-
-/***/ 764:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.runTests = void 0;
-const exec_1 = __nccwpck_require__(514);
-const core = __importStar(__nccwpck_require__(186));
-const process_1 = __nccwpck_require__(282);
-const path_1 = __importDefault(__nccwpck_require__(17));
-const utils_1 = __nccwpck_require__(314);
-const optShowStdOut = core.getBooleanInput('show-stdout'), optShowPassedTests = core.getBooleanInput('show-passed-tests'), optShowCodeCoverage = core.getBooleanInput('show-code-coverage'), optLongRunningTestDuration = (0, utils_1.atoiOrDefault)(core.getInput('show-long-running-tests'), 15);
-const testOutput = new Map(), failed = new Set(), panicked = new Set(), errored = new Set(), codeCoverage = new Map();
-let errout = '', stdout = '';
-let totalRun = 0;
-const newLineReg = new RegExp(/\r?\n/);
-let buf = '';
-function parseStdout(data) {
-    if (!data)
-        return;
-    let result;
-    stdout += data.toString();
-    buf += data.toString();
-    while ((result = newLineReg.exec(buf)) !== null) {
-        const line = buf.slice(0, result.index);
-        buf = buf.slice(result.index + result[0].length);
-        processOutput(line);
-    }
-}
-function getRelativeFilePath(goPkg, file) {
-    return __awaiter(this, void 0, void 0, function* () {
-        core.debug(`getting package path for ${goPkg}/${file}...`);
-        let packagePath = '', errorMsg = '';
-        const exitCode = yield (0, exec_1.exec)('go', ['list', '-f', '{{.Dir}}', goPkg], {
-            silent: true,
-            ignoreReturnCode: true,
-            listeners: {
-                stdout: (data) => {
-                    packagePath += data.toString();
-                },
-                stderr: (data) => {
-                    errorMsg += data.toString();
-                }
-            }
-        });
-        packagePath = packagePath.trim();
-        errorMsg = errorMsg.trim();
-        if (exitCode !== 0)
-            throw new Error(`failed to get package path for ${goPkg}: ${errorMsg}`);
-        else if (packagePath === '')
-            throw new Error(`failed to get package path for ${goPkg} (empty output)`);
-        core.debug(`package path for ${goPkg} is ${packagePath}`);
-        const workspace = process_1.env['GITHUB_WORKSPACE'];
-        let full = path_1.default.join(packagePath, file);
-        core.debug(`absolute path for ${goPkg}/${file} is ${full}`);
-        if (workspace && full.startsWith(workspace))
-            full = full.slice(workspace.length + 1);
-        if (full.startsWith('/'))
-            full = full.slice(1);
-        core.debug(`relative path for ${goPkg}/${file} is ${full}`);
-        return full;
-    });
-}
-function parseStdErr(data) {
-    if (!data)
-        return;
-    errout += data.toString();
-}
-function processOutput(line) {
-    try {
-        const parsed = JSON.parse(line), key = `${parsed.Package}${parsed.Test ? '/' + parsed.Test : ''}`;
-        let results = testOutput.get(key);
-        if (!results)
-            results = { package: parsed.Package, elapsed: 0, output: [] };
-        switch (parsed.Action) {
-            case 'output':
-                // parse panics or errors
-                if (parsed.Output.indexOf('panic: runtime error:') == 0)
-                    panicked.add(key);
-                else if (parsed.Output.indexOf('==ERROR:') !== -1)
-                    errored.add(key);
-                // parse code coverage
-                const coverageReg = new RegExp(/^coverage: (\d+\.\d+)% of statements/), match = parsed.Output.match(coverageReg);
-                if (match)
-                    codeCoverage.set(parsed.Package, parseFloat(match[1]));
-                else if (parsed.Output.indexOf('[no test files]') !== -1 && !codeCoverage.has(parsed.Package))
-                    codeCoverage.set(parsed.Package, 0);
-                results.output.push(parsed.Output);
-                break;
-            case 'fail':
-                totalRun++;
-                results.elapsed = (0, utils_1.parseFloatOrDefault)(parsed.Elapsed);
-                failed.add(key);
-                if (optLongRunningTestDuration !== -1 && results.elapsed >= optLongRunningTestDuration)
-                    core.info(`\u001b[33m${key} took ${results.elapsed}s to fail`);
-                if (!optShowStdOut)
-                    core.info(`\u001b[31m${key} failed in ${results.elapsed}s`);
-                break;
-            case 'pass':
-                totalRun++;
-                results.elapsed = (0, utils_1.parseFloatOrDefault)(parsed.Elapsed);
-                if (optLongRunningTestDuration !== -1 && results.elapsed >= optLongRunningTestDuration)
-                    core.info(`\u001b[33m${key} passed in ${results.elapsed}s`);
-                else if (!optShowStdOut && optShowPassedTests)
-                    core.info(`\u001b[32m${key} passed in ${results.elapsed}s`);
-                break;
-        }
-        testOutput.set(key, results);
-    }
-    catch (ex) {
-        core.error(`failed to process line "${line}": ${ex}`);
-    }
-}
-function processAnnotations(output) {
-    const goFileRegex = /([a-z_0-9]+.go)\:([0-9]+)/, annotations = [];
-    let current = null;
-    for (const line of output) {
-        const normalized = line.trim();
-        if (normalized.startsWith('=== RUN') || normalized.startsWith('--- FAIL')) // ignore go test output
-            continue;
-        else if (line.startsWith('panic:')) { // panics must be handled separately
-            break;
-        }
-        const match = normalized.match(goFileRegex);
-        if (match) { // if the output matches, create a new annotation
-            if (current)
-                annotations.push(current); // push the current annotation
-            current = {
-                file: match[1],
-                line: parseInt(match[2]),
-                text: line
-            };
-            continue;
-        }
-        // append the line to the current annotation
-        if (current)
-            current.text += line;
-    }
-    // push the last annotation
-    if (current)
-        annotations.push(current);
-    return annotations.map(a => (Object.assign(Object.assign({}, a), { text: a.text.trim() })));
-}
-function runTests() {
-    var _a;
-    return __awaiter(this, void 0, void 0, function* () {
-        const args = ['test', '-json', '-v'].concat((core.getInput('args') || '')
-            .split(';').map(a => a.trim()).filter(a => a.length > 0).filter(a => a.length > 0)), start = Date.now();
-        args.push(core.getInput('package'));
-        core.info(`Running test as "go ${args.join(' ')}"`);
-        const exit = yield (0, exec_1.exec)('go', args, {
-            ignoreReturnCode: true,
-            silent: !optShowStdOut && !core.isDebug(),
-            listeners: {
-                // cannot use stdline or errline because Go's CLI tools do not behave.
-                stdout: parseStdout,
-                stderr: parseStdErr,
-            },
-        });
-        if (buf.length !== 0)
-            processOutput(buf);
-        // If go test returns a non-zero exit code with no failed tests, something
-        // went wrong.
-        if (exit !== 0 && panicked.size === 0 && failed.size === 0 && errored.size === 0) {
-            core.setFailed(`go test failed with exit code ${exit}, but no tests failed. Check output for more details`);
-            core.startGroup('stdout');
-            core.info(stdout);
-            core.endGroup();
-            core.startGroup('stderr');
-            core.info(errout);
-            core.endGroup();
-            return;
-        }
-        // if something was written to stderr, print it
-        // note: this can include Go package downloads, so it's not always an error
-        if (errout.length > 0) {
-            core.startGroup('stderr');
-            core.info(errout);
-            core.endGroup();
-        }
-        // print any panicked tests
-        if (panicked.size > 0) {
-            core.setFailed(`${panicked.size}/${totalRun} tests panicked`);
-            panicked.forEach(k => {
-                var _a;
-                const results = testOutput.get(k);
-                if (!results || !((_a = results === null || results === void 0 ? void 0 : results.output) === null || _a === void 0 ? void 0 : _a.length))
-                    return;
-                core.startGroup(`Test ${k} output`);
-                core.error(`Test ${k} panicked in ${results.elapsed}s:\n` + results.output.join(''));
-                core.endGroup();
-            });
-        }
-        // print any errored tests, includes tests with build errors
-        if (errored.size > 0) {
-            core.setFailed(`${errored.size}/${totalRun} tests errored`);
-            errored.forEach((k) => {
-                var _a;
-                const results = testOutput.get(k);
-                if (!results || !((_a = results === null || results === void 0 ? void 0 : results.output) === null || _a === void 0 ? void 0 : _a.length))
-                    return;
-                core.startGroup(`Test ${k} output`);
-                core.error(`Test ${k} errored in ${results.elapsed}s:\n` + results.output.join(''));
-                core.endGroup();
-            });
-        }
-        // print any failed tests
-        if (failed.size > 0) {
-            core.setFailed(`${failed.size}/${totalRun} tests failed`);
-            for (const k of failed) {
-                const results = testOutput.get(k);
-                if (!results || !((_a = results === null || results === void 0 ? void 0 : results.output) === null || _a === void 0 ? void 0 : _a.length))
-                    return;
-                core.startGroup(`Test ${k} output`);
-                // add file annotations
-                const annotations = processAnnotations(results.output);
-                for (const a of annotations) {
-                    try {
-                        core.error(a.text, {
-                            title: `Test ${k} failed in ${results.elapsed}s`,
-                            file: yield getRelativeFilePath(results.package, a.file),
-                            startLine: a.line,
-                        });
-                    }
-                    catch (ex) {
-                        core.error(`Failed to get relative file path for ${a.file}: ${ex}`);
-                        continue;
-                    }
-                }
-                // log the raw output
-                core.info(results.output.join(''));
-                core.endGroup();
-            }
-        }
-        if (optShowCodeCoverage) {
-            core.startGroup('Code Coverage');
-            for (const [pkg, coverage] of codeCoverage) {
-                const colorCode = coverage < 30 ? '\u001b[31m' : coverage < 60 ? '\u001b[32m' : '\u001b[33m', msg = `${pkg} coverage: ${colorCode}${coverage}%\u001b[0m of statements`;
-                core.info(msg);
-            }
-            core.endGroup();
-        }
-        const passed = totalRun - failed.size - errored.size - panicked.size, totalElapsed = (Date.now() - start) / 1000;
-        core.info(`\u001b[32m${passed}/${totalRun} tests passed in ${totalElapsed.toFixed(2)}s`);
-    });
-}
-exports.runTests = runTests;
-
-
-/***/ }),
-
-/***/ 314:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.parseFloatOrDefault = exports.atoiOrDefault = void 0;
-function atoiOrDefault(s, def = 0) {
-    const n = parseInt(s, 10);
-    if (!isFinite(n) || isNaN(n))
-        return def;
-    return n;
-}
-exports.atoiOrDefault = atoiOrDefault;
-function parseFloatOrDefault(s, def = 0) {
-    const n = parseFloat(s);
-    if (!isFinite(n) || isNaN(n))
-        return def;
-    return n;
-}
-exports.parseFloatOrDefault = parseFloatOrDefault;
 
 
 /***/ }),
