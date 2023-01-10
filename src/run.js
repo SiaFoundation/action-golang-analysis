@@ -84,6 +84,7 @@ function runTests() {
         for (const analyzer of analyzers) {
             packages.push(analyzer.substring(0, analyzer.lastIndexOf(".")) + "@HEAD");
         }
+        yield (0, exec_1.exec)("gofmt", ["-s", "-w", "."]);
         yield (0, exec_1.exec)("go", ["mod", "init", "temp"]);
         yield (0, exec_1.exec)("go", ["get", ...packages]);
         yield (0, exec_1.exec)("go", ["mod", "tidy"]);

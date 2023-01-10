@@ -63,6 +63,7 @@ export async function runTests() {
     for (const analyzer of analyzers) {
         packages.push(analyzer.substring(0, analyzer.lastIndexOf(".")) + "@HEAD");
     }
+    await exec("gofmt", ["-s", "-w", "."]);
     await exec("go", ["mod", "init", "temp"]);
     await exec("go", ["get", ...packages]);
     await exec("go", ["mod", "tidy"]);
