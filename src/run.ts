@@ -35,6 +35,13 @@ const getDirectories = (source: string) =>
 export async function runTests() {
     let program = "package main\n";
     const analyzers = core.getInput("analyzers", { required: false }).split(";");
+    for (let i = 0; i < analyzers.length; i++) {
+        const lastDot = analyzers[i].lastIndexOf(".");
+        const lastSlash = analyzers[i].lastIndexOf("/");
+        if (lastDot < lastSlash || (lastDot == -1 && lastSlash == -1)) {
+            analyzers[i] += ".Analyzer";
+        }
+    }
 
     program += `import ("golang.org/x/tools/go/analysis/multichecker";`;
     for (const analyzer of analyzers) {
