@@ -60,7 +60,7 @@ const getDirectories = (source) => (0, fs_1.readdirSync)(source, { withFileTypes
 function runTests() {
     return __awaiter(this, void 0, void 0, function* () {
         let program = "package main\n";
-        const analyzers = core.getInput("analyzers", { required: false }).split(";");
+        const analyzers = core.getMultilineInput("analyzers", { required: false });
         for (let i = 0; i < analyzers.length; i++) {
             const lastDot = analyzers[i].lastIndexOf(".");
             const lastSlash = analyzers[i].lastIndexOf("/");

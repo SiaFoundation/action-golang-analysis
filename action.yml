@@ -3,8 +3,9 @@ description: Run a set of golang.org/x/tools/go/analysis.Analyzers on a reposito
 author: Christopher Tarry <chrisjt@sia.tech>
 inputs:
   analyzers:
-    description: List of analyzers, separated by semicolons.
-    default: "go.sia.tech/jape.Analyzer"
+    description: List of analyzers.
+    default:
+      - go.sia.tech/jape.Analyzer
     required: false
 runs:
   using: "node16"
