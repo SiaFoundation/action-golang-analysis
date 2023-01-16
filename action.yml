@@ -1,11 +1,11 @@
 name: Go Multianalyzer Check
 description: Run a set of golang.org/x/tools/go/analysis.Analyzers on a repository.
-author: Christopher Tarry <chrisjt@sia.tech>
+author: The Sia Foundation
 inputs:
   analyzers:
     description: List of analyzers.
-    default:
-      - go.sia.tech/jape.Analyzer
+    default: |
+      go.sia.tech/jape.Analyzer
     required: false
 runs:
   using: "node16"
