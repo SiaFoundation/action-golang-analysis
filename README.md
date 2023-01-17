@@ -21,12 +21,13 @@ on:
     branches: [ master ]
 
 jobs:
-  test:
+  analyzer:
     runs-on: ubuntu-latest
-    analyzer:
+    steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
       - uses: SiaFoundation/action-golang-analysis@HEAD
         with:
-          analyzers: "go.sia.tech/jape.Analyzer"
+          analyzers: |
+            go.sia.tech/jape.Analyzer
 ```
