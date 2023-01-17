@@ -34,7 +34,7 @@ const getDirectories = (source: string) =>
 
 export async function runTests() {
     let program = "package main\n";
-    const analyzers = core.getMultilineInput("analyzers", { required: false });
+    const analyzers = core.getMultilineInput("analyzers", { required: true });
     for (let i = 0; i < analyzers.length; i++) {
         const lastDot = analyzers[i].lastIndexOf(".");
         const lastSlash = analyzers[i].lastIndexOf("/");

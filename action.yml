@@ -4,9 +4,7 @@ author: The Sia Foundation
 inputs:
   analyzers:
     description: List of analyzers.
-    default: |
-      go.sia.tech/jape.Analyzer
-    required: false
+    required: true
 runs:
   using: "node16"
   main: "dist/index.js"
