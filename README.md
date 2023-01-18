@@ -1,14 +1,14 @@
 # golang-analysis
 
-This action runs a set of [analysis.Analyzers](https://pkg.go.dev/golang.org/x/tools/go/analysis#Analyzer) in a [multichecker](https://pkg.go.dev/golang.org/x/tools/go/analysis/multichecker) and provides annotations from the output.  Needs to be tested.
+This action runs a set of [analysis.Analyzers](https://pkg.go.dev/golang.org/x/tools/go/analysis#Analyzer) in a [multichecker](https://pkg.go.dev/golang.org/x/tools/go/analysis/multichecker) and provides annotations from the output.
 
 ## Inputs
 
-All inputs are optional
+All inputs are required.
 
 | Input | Type | Description | Default 
 --|--|--|--
-analyzers | string | semicolon delimited list of analyzers | go.sia.tech/jape.Analyzer
+analyzers | string | multiline list of analyzers | none
 
 ## Usage
 
