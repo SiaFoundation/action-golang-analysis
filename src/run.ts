@@ -58,7 +58,7 @@ export async function runTests() {
 
     const source = cwd();
 
-    const dir = path.join(cwd(), "/.temp");
+    const dir = path.join(source, "/.temp");
     try {
         rmSync(dir, { recursive: true, force: true });
     } catch {}
@@ -75,7 +75,7 @@ export async function runTests() {
     await exec("go", ["mod", "init", "temp"]);
     await exec("go", ["get", ...packages]);
     await exec("go", ["mod", "tidy"]);
-    await exec("go", ["build", "-o", "check"]);
+    await exec("go", ["build", "-o", "check.exe"]);
 
     chdir(source);
 
@@ -86,6 +86,8 @@ export async function runTests() {
         if (directory.startsWith(".")) {
             continue;
         }
+        core.info(readdirSync(".").join(";"))
+        core.info(readdirSync(dir).join(";"))
 
         let output: string = "";
         const options = {
@@ -101,13 +103,11 @@ export async function runTests() {
         };
 
         let slash = "/";
-        let suffix = "";
         if (platform === "win32") {
             slash = "\\";
-            suffix = ".exe";
         }
 
-        await exec(path.join(dir, "check" + suffix), ["." + slash + path.relative(".", directory)], options);
+        await exec(path.join(dir, "check.exe"), ["." + slash + path.relative(".", directory)], options);
         const annotations: Annotation[] = parseAnalyzerOutput(output.toString());
         for (const annotation of annotations) {
             gotError = true;

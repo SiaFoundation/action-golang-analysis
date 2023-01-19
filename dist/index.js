@@ -4026,7 +4026,7 @@ function runTests() {
         }
         program += ")}\n";
         const source = (0, process_1.cwd)();
-        const dir = path_1.default.join((0, process_1.cwd)(), "/.temp");
+        const dir = path_1.default.join(source, "/.temp");
         try {
             (0, fs_2.rmSync)(dir, { recursive: true, force: true });
         }
@@ -4042,7 +4042,7 @@ function runTests() {
         yield (0, exec_1.exec)("go", ["mod", "init", "temp"]);
         yield (0, exec_1.exec)("go", ["get", ...packages]);
         yield (0, exec_1.exec)("go", ["mod", "tidy"]);
-        yield (0, exec_1.exec)("go", ["build", "-o", "check"]);
+        yield (0, exec_1.exec)("go", ["build", "-o", "check.exe"]);
         (0, process_1.chdir)(source);
         let gotError = false;
         core.startGroup(`Analyzer output`);
@@ -4051,6 +4051,8 @@ function runTests() {
             if (directory.startsWith(".")) {
                 continue;
             }
+            core.info((0, fs_1.readdirSync)(".").join(";"));
+            core.info((0, fs_1.readdirSync)(dir).join(";"));
             let output = "";
             const options = {
                 ignoreReturnCode: true,
@@ -4064,12 +4066,10 @@ function runTests() {
                 },
             };
             let slash = "/";
-            let suffix = "";
             if (process_1.platform === "win32") {
                 slash = "\\";
-                suffix = ".exe";
             }
-            yield (0, exec_1.exec)(path_1.default.join(dir, "check" + suffix), ["." + slash + path_1.default.relative(".", directory)], options);
+            yield (0, exec_1.exec)(path_1.default.join(dir, "check.exe"), ["." + slash + path_1.default.relative(".", directory)], options);
             const annotations = parseAnalyzerOutput(output.toString());
             for (const annotation of annotations) {
                 gotError = true;
