@@ -5,7 +5,7 @@ import path from "path";
 import { readdirSync, statSync } from "fs";
 import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { spawnSync } from "child_process";
-import { chdir, cwd } from "process";
+import { chdir, cwd, platform } from "process";
 
 interface Annotation {
     file: string;
@@ -38,7 +38,7 @@ export async function runTests() {
     for (let i = 0; i < analyzers.length; i++) {
         const lastDot = analyzers[i].lastIndexOf(".");
         const lastSlash = analyzers[i].lastIndexOf("/");
-        if (lastDot < lastSlash || (lastDot == -1 && lastSlash == -1)) {
+        if (lastDot < lastSlash || (lastDot === -1 && lastSlash === -1)) {
             analyzers[i] += ".Analyzer";
         }
     }
@@ -58,12 +58,12 @@ export async function runTests() {
 
     const source = cwd();
 
-    const dir = cwd() + "/.temp";
+    const dir = path.join(cwd(), "/.temp");
     try {
         rmSync(dir, { recursive: true, force: true });
     } catch {}
     mkdirSync(dir);
-    writeFileSync(dir + "/check.go", program);
+    writeFileSync(path.join(dir, "/check.go"), program);
 
     chdir(dir);
 
@@ -100,7 +100,11 @@ export async function runTests() {
             },
         };
 
-        await exec(dir + "/check", ["./" + path.relative(".", directory)], options);
+        let slash = "/";
+        if (platform === "win32") {
+            slash = "\\";
+        }
+        await exec(path.join(dir, "check"), ["." + slash + path.relative(".", directory)], options);
         const annotations: Annotation[] = parseAnalyzerOutput(output.toString());
         for (const annotation of annotations) {
             gotError = true;

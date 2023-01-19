@@ -64,7 +64,7 @@ function runTests() {
         for (let i = 0; i < analyzers.length; i++) {
             const lastDot = analyzers[i].lastIndexOf(".");
             const lastSlash = analyzers[i].lastIndexOf("/");
-            if (lastDot < lastSlash || (lastDot == -1 && lastSlash == -1)) {
+            if (lastDot < lastSlash || (lastDot === -1 && lastSlash === -1)) {
                 analyzers[i] += ".Analyzer";
             }
         }
@@ -80,13 +80,13 @@ function runTests() {
         }
         program += ")}\n";
         const source = (0, process_1.cwd)();
-        const dir = (0, process_1.cwd)() + "/.temp";
+        const dir = path_1.default.join((0, process_1.cwd)(), "/.temp");
         try {
             (0, fs_2.rmSync)(dir, { recursive: true, force: true });
         }
         catch (_a) { }
         (0, fs_2.mkdirSync)(dir);
-        (0, fs_2.writeFileSync)(dir + "/check.go", program);
+        (0, fs_2.writeFileSync)(path_1.default.join(dir, "/check.go"), program);
         (0, process_1.chdir)(dir);
         const packages = ["golang.org/x/tools/go/analysis/multichecker"];
         for (const analyzer of analyzers) {
@@ -117,7 +117,11 @@ function runTests() {
                     },
                 },
             };
-            yield (0, exec_1.exec)(dir + "/check", ["./" + path_1.default.relative(".", directory)], options);
+            let slash = "/";
+            if (process_1.platform === "win32") {
+                slash = "\\";
+            }
+            yield (0, exec_1.exec)(path_1.default.join(dir, "check"), ["." + slash + path_1.default.relative(".", directory)], options);
             const annotations = parseAnalyzerOutput(output.toString());
             for (const annotation of annotations) {
                 gotError = true;
