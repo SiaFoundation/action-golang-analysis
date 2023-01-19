@@ -86,8 +86,6 @@ export async function runTests() {
         if (directory.startsWith(".")) {
             continue;
         }
-        core.info(readdirSync(".").join(";"))
-        core.info(readdirSync(dir).join(";"))
 
         let output: string = "";
         const options = {

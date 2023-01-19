@@ -4051,8 +4051,6 @@ function runTests() {
             if (directory.startsWith(".")) {
                 continue;
             }
-            core.info((0, fs_1.readdirSync)(".").join(";"));
-            core.info((0, fs_1.readdirSync)(dir).join(";"));
             let output = "";
             const options = {
                 ignoreReturnCode: true,
