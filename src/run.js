@@ -59,7 +59,7 @@ const getDirectories = (source) => (0, fs_1.readdirSync)(source, { withFileTypes
     .map((dirent) => dirent.name);
 function runTests() {
     return __awaiter(this, void 0, void 0, function* () {
-        let program = "package main\n";
+        const failOnError = core.getBooleanInput("failOnError", { required: false });
         const analyzers = core.getMultilineInput("analyzers", { required: true });
         for (let i = 0; i < analyzers.length; i++) {
             const lastDot = analyzers[i].lastIndexOf(".");
@@ -68,6 +68,7 @@ function runTests() {
                 analyzers[i] += ".Analyzer";
             }
         }
+        let program = "package main\n";
         program += `import ("golang.org/x/tools/go/analysis/multichecker";`;
         for (const analyzer of analyzers) {
             program += `"` + analyzer.substring(0, analyzer.lastIndexOf(".")) + `";`;
@@ -97,6 +98,7 @@ function runTests() {
         yield (0, exec_1.exec)("go", ["mod", "tidy"]);
         yield (0, exec_1.exec)("go", ["build", "-o", "check"]);
         (0, process_1.chdir)(source);
+        let gotError = false;
         core.startGroup(`Analyzer output`);
         const directories = getDirectories(".");
         for (const directory of directories) {
@@ -118,6 +120,7 @@ function runTests() {
             yield (0, exec_1.exec)(dir + "/check", ["./" + path_1.default.relative(".", directory)], options);
             const annotations = parseAnalyzerOutput(output.toString());
             for (const annotation of annotations) {
+                gotError = true;
                 core.error(annotation.text, {
                     title: `Analyzer warning in ${directory}`,
                     file: path_1.default.relative(".", annotation.file),
@@ -126,6 +129,9 @@ function runTests() {
             }
         }
         core.endGroup();
+        if (gotError && failOnError) {
+            core.setFailed("Got analyzer warnings");
+        }
         (0, fs_2.rmSync)(dir, { recursive: true, force: true });
     });
 }

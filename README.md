@@ -4,11 +4,12 @@ This action runs a set of [analysis.Analyzers](https://pkg.go.dev/golang.org/x/t
 
 ## Inputs
 
-All inputs are required.
+A list of `analyzers` is required.
 
 | Input | Type | Description | Default 
 --|--|--|--
-analyzers | string | multiline list of analyzers | none
+analyzers | string | Multiline list of analyzers | none
+failOnError | bool | Whether to fail if analyzer finds errors  | true
 
 ## Usage
 

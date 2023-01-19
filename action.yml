@@ -2,6 +2,10 @@ name: Go Multianalyzer Check
 description: Run a set of golang.org/x/tools/go/analysis.Analyzers on a repository.
 author: The Sia Foundation
 inputs:
+  failOnError:
+    description: Whether to fail if analyzer finds errors.
+    required: false
+    default: true
   analyzers:
     description: List of analyzers.
     required: true

@@ -33,7 +33,7 @@ const getDirectories = (source: string) =>
         .map((dirent) => dirent.name);
 
 export async function runTests() {
-    let program = "package main\n";
+    const failOnError = core.getBooleanInput("failOnError", { required: false });
     const analyzers = core.getMultilineInput("analyzers", { required: true });
     for (let i = 0; i < analyzers.length; i++) {
         const lastDot = analyzers[i].lastIndexOf(".");
@@ -43,6 +43,7 @@ export async function runTests() {
         }
     }
 
+    let program = "package main\n";
     program += `import ("golang.org/x/tools/go/analysis/multichecker";`;
     for (const analyzer of analyzers) {
         program += `"` + analyzer.substring(0, analyzer.lastIndexOf(".")) + `";`;
@@ -78,6 +79,7 @@ export async function runTests() {
 
     chdir(source);
 
+    let gotError = false;
     core.startGroup(`Analyzer output`);
     const directories = getDirectories(".");
     for (const directory of directories) {
@@ -101,6 +103,7 @@ export async function runTests() {
         await exec(dir + "/check", ["./" + path.relative(".", directory)], options);
         const annotations: Annotation[] = parseAnalyzerOutput(output.toString());
         for (const annotation of annotations) {
+            gotError = true;
             core.error(annotation.text, {
                 title: `Analyzer warning in ${directory}`,
                 file: path.relative(".", annotation.file),
@@ -109,6 +112,10 @@ export async function runTests() {
         }
     }
     core.endGroup();
+
+    if (gotError && failOnError) {
+        core.setFailed("Got analyzer warnings");
+    }
 
     rmSync(dir, { recursive: true, force: true });
 }
