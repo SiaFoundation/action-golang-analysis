@@ -101,10 +101,13 @@ export async function runTests() {
         };
 
         let slash = "/";
+        let suffix = "";
         if (platform === "win32") {
             slash = "\\";
+            suffix = ".exe";
         }
-        await exec(path.join(dir, "check"), ["." + slash + path.relative(".", directory)], options);
+
+        await exec(path.join(dir, "check"), ["." + slash + path.relative(".", directory) + suffix], options);
         const annotations: Annotation[] = parseAnalyzerOutput(output.toString());
         for (const annotation of annotations) {
             gotError = true;

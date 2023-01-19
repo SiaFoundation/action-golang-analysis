@@ -4064,10 +4064,12 @@ function runTests() {
                 },
             };
             let slash = "/";
+            let suffix = "";
             if (process_1.platform === "win32") {
                 slash = "\\";
+                suffix = ".exe";
             }
-            yield (0, exec_1.exec)(path_1.default.join(dir, "check"), ["." + slash + path_1.default.relative(".", directory)], options);
+            yield (0, exec_1.exec)(path_1.default.join(dir, "check"), ["." + slash + path_1.default.relative(".", directory) + suffix], options);
             const annotations = parseAnalyzerOutput(output.toString());
             for (const annotation of annotations) {
                 gotError = true;
