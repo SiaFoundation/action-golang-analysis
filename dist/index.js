@@ -4069,7 +4069,7 @@ function runTests() {
                 slash = "\\";
                 suffix = ".exe";
             }
-            yield (0, exec_1.exec)(path_1.default.join(dir, "check"), ["." + slash + path_1.default.relative(".", directory) + suffix], options);
+            yield (0, exec_1.exec)(path_1.default.join(dir, "check" + suffix), ["." + slash + path_1.default.relative(".", directory)], options);
             const annotations = parseAnalyzerOutput(output.toString());
             for (const annotation of annotations) {
                 gotError = true;

@@ -107,7 +107,7 @@ export async function runTests() {
             suffix = ".exe";
         }
 
-        await exec(path.join(dir, "check"), ["." + slash + path.relative(".", directory) + suffix], options);
+        await exec(path.join(dir, "check" + suffix), ["." + slash + path.relative(".", directory)], options);
         const annotations: Annotation[] = parseAnalyzerOutput(output.toString());
         for (const annotation of annotations) {
             gotError = true;
