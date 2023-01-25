@@ -62,35 +62,45 @@ function runTests() {
         const failOnError = core.getBooleanInput("failOnError", { required: false });
         const analyzers = core.getMultilineInput("analyzers", { required: true });
         for (let i = 0; i < analyzers.length; i++) {
-            const lastDot = analyzers[i].lastIndexOf(".");
-            const lastSlash = analyzers[i].lastIndexOf("/");
+            if (!analyzers[i].includes("@")) {
+                analyzers[i] += "@HEAD";
+            }
+        }
+        for (let i = 0; i < analyzers.length; i++) {
+            const at = analyzers[i].lastIndexOf("@");
+            const lastDot = analyzers[i].slice(0, at).lastIndexOf(".");
+            const lastSlash = analyzers[i].slice(0, at).lastIndexOf("/");
             if (lastDot < lastSlash || (lastDot === -1 && lastSlash === -1)) {
-                analyzers[i] += ".Analyzer";
+                analyzers[i] = analyzers[i].slice(0, at) + ".Analyzer" + analyzers[i].slice(at);
             }
         }
         let program = "package main\n";
         program += `import ("golang.org/x/tools/go/analysis/multichecker";`;
-        for (const analyzer of analyzers) {
+        for (let analyzer of analyzers) {
+            analyzer = analyzer.substring(0, analyzer.lastIndexOf("@"));
             program += `"` + analyzer.substring(0, analyzer.lastIndexOf(".")) + `";`;
         }
         program += ")\n";
         program += "func main() {multichecker.Main(";
-        for (const analyzer of analyzers) {
+        for (let analyzer of analyzers) {
+            analyzer = analyzer.substring(0, analyzer.lastIndexOf("@"));
             program += analyzer.substring(analyzer.lastIndexOf("/") + 1) + ",";
         }
         program += ")}\n";
         const source = (0, process_1.cwd)();
-        const dir = path_1.default.join(source, "/.temp");
+        const dir = path_1.default.join(source, ".temp");
         try {
             (0, fs_2.rmSync)(dir, { recursive: true, force: true });
         }
         catch (_a) { }
         (0, fs_2.mkdirSync)(dir);
-        (0, fs_2.writeFileSync)(path_1.default.join(dir, "/check.go"), program);
+        (0, fs_2.writeFileSync)(path_1.default.join(dir, "check.go"), program);
         (0, process_1.chdir)(dir);
         const packages = ["golang.org/x/tools/go/analysis/multichecker"];
         for (const analyzer of analyzers) {
-            packages.push(analyzer.substring(0, analyzer.lastIndexOf(".")) + "@HEAD");
+            const at = analyzer.lastIndexOf("@");
+            const noVersion = analyzer.substring(0, at);
+            packages.push(noVersion.substring(0, noVersion.lastIndexOf(".")) + analyzer.slice(at));
         }
         yield (0, exec_1.exec)("gofmt", ["-s", "-w", "."]);
         yield (0, exec_1.exec)("go", ["mod", "init", "temp"]);
