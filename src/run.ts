@@ -124,6 +124,13 @@ export async function runTests() {
             options
         );
         const annotations: Annotation[] = parseAnalyzerOutput(output.toString());
+        if (output.toString().includes("panic: ")) {
+            gotError = true;
+            core.error(`Analyzer panic in ${directory}`, {
+                title: `Analyzer panic in ${directory}`,
+            });
+            continue;
+        }
         for (const annotation of annotations) {
             gotError = true;
             core.error(annotation.text, {
