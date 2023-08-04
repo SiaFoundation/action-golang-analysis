@@ -133,6 +133,13 @@ function runTests() {
             }
             yield (0, exec_1.exec)(path_1.default.join(dir, "check.exe"), ["." + slash + path_1.default.relative(".", directory)], options);
             const annotations = parseAnalyzerOutput(output.toString());
+            if (output.toString().includes("panic: ")) {
+                gotError = true;
+                core.error(`Analyzer panic in ${directory}`, {
+                    title: `Analyzer panic in ${directory}`,
+                });
+                continue;
+            }
             for (const annotation of annotations) {
                 gotError = true;
                 core.error(annotation.text, {
