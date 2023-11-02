@@ -8,25 +8,36 @@ import {spawnSync} from "child_process";
 import {chdir, cwd, platform} from "process";
 
 interface Annotation {
-    file: string;
-    line: number;
+    file?: string;
+    line?: number;
     text: string;
 }
 
 function parseAnalyzerOutput(input: string): Annotation[] {
     const lines = input.split("\n");
 
-    let annotations: Annotation[] = [];
+    const annotations: Annotation[] = [];
     for (const line of lines) {
         const split = line.split(":");
-        if (split.length != 4) {
-            continue;
+        if (line.startsWith("-: ")) {
+            // Example: -: Client missing method for POST /api/submit
+            annotations.push({
+                text: split.slice(1).join(":"),
+            });
+        } else if (split.length === 2) {
+            // Example: japecheck: no Client definition found
+            annotations.push({
+                text: split[1],
+            });
+        } else if (split.length >= 4) {
+            // Most common case - we have file, line number, and text
+            // Example: a/b/c/accounts.go:17:66: Client has wrong request type for POST /account/:id (got <nil>, should be go.sia.tech/renterd/api.AccountHandlerPOST)
+            annotations.push({
+                file: split[0],
+                line: Number(split[1]),
+                text: split.slice(3).join(":"),
+            });
         }
-        annotations.push({
-            file: split[0],
-            line: Number(split[1]),
-            text: split[3],
-        });
     }
     return annotations;
 }
@@ -146,11 +157,17 @@ export async function runTests() {
         }
         for (const annotation of annotations) {
             gotError = true;
-            core.error(annotation.text, {
+
+            const result: core.AnnotationProperties = {
                 title: `Analyzer warning in ${directory}`,
-                file: path.relative(".", annotation.file),
-                startLine: annotation.line,
-            });
+            };
+            if (annotation.file !== undefined) {
+                result.file = path.relative(".", annotation.file);
+            }
+            if (annotation.line !== undefined) {
+                result.startLine = annotation.line;
+            }
+            core.error(annotation.text, result);
         }
     }
     core.endGroup();
