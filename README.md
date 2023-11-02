@@ -9,6 +9,7 @@ A list of `analyzers` is required.
 | Input | Type | Description | Default 
 --|--|--|--
 analyzers | string | Multiline list of analyzers | none
+directories | string | Multiline list of directories to pass to the analyzers.  If multiple directories are to be passed simultaneously, place them on the same line and separate them with a space.  | none
 failOnError | bool | Whether to fail if analyzer finds errors  | true
 
 ## Usage
@@ -31,4 +32,8 @@ jobs:
         with:
           analyzers: |
             go.sia.tech/jape.Analyzer
+          directories: |
+            autopilot
+            bus bus/client
+            worker worker/client
 ```

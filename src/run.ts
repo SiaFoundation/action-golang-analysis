@@ -42,14 +42,17 @@ function parseAnalyzerOutput(input: string): Annotation[] {
     return annotations;
 }
 
-const getDirectories = (source: string) =>
-    readdirSync(source, {withFileTypes: true})
-        .filter((dirent) => dirent.isDirectory())
-        .map((dirent) => dirent.name);
-
 export async function runTests() {
     const failOnError = core.getBooleanInput("failOnError", {required: false});
     const analyzers = core.getMultilineInput("analyzers", {required: true});
+    const directories_lines = core.getMultilineInput("directories", {
+        required: true,
+    });
+
+    const directories: string[][] = [];
+    for (let i = 0; i < directories_lines.length; i++) {
+        directories[i] = directories_lines[i].split(" ");
+    }
 
     for (let i = 0; i < analyzers.length; i++) {
         if (!analyzers[i].includes("@")) {
@@ -116,12 +119,7 @@ export async function runTests() {
 
     let gotError = false;
     core.startGroup(`Analyzer output`);
-    const directories = getDirectories(".");
-    for (const directory of directories) {
-        if (directory.startsWith(".")) {
-            continue;
-        }
-
+    for (const dirs of directories) {
         let output: string = "";
         const options = {
             ignoreReturnCode: true,
@@ -140,18 +138,18 @@ export async function runTests() {
             slash = "\\";
         }
 
-        await exec(
-            path.join(dir, "check.exe"),
-            ["." + slash + path.relative(".", directory)],
-            options
-        );
+        const args: string[] = [];
+        for (const dir of dirs) {
+            args.push("." + slash + path.relative(".", dir));
+        }
+        await exec(path.join(dir, "check.exe"), args, options);
         const annotations: Annotation[] = parseAnalyzerOutput(
             output.toString()
         );
         if (output.toString().includes("panic: ")) {
             gotError = true;
-            core.error(`Analyzer panic in ${directory}`, {
-                title: `Analyzer panic in ${directory}`,
+            core.error(`Analyzer panic in ${dirs}`, {
+                title: `Analyzer panic in ${dirs}`,
             });
             continue;
         }
@@ -159,7 +157,7 @@ export async function runTests() {
             gotError = true;
 
             const result: core.AnnotationProperties = {
-                title: `Analyzer warning in ${directory}`,
+                title: `Analyzer warning in ${dirs}`,
             };
             if (annotation.file !== undefined) {
                 result.file = path.relative(".", annotation.file);
