@@ -1,5 +1,5 @@
 import * as core from "@actions/core";
-import { runTests } from "./run";
+import {runTests} from "./run";
 
 (async () => {
     try {

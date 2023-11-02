@@ -1,11 +1,11 @@
-import { exec } from "@actions/exec";
+import {exec} from "@actions/exec";
 import * as core from "@actions/core";
-import { env } from "process";
+import {env} from "process";
 import path from "path";
-import { readdirSync, statSync } from "fs";
-import { mkdirSync, rmSync, writeFileSync } from "fs";
-import { spawnSync } from "child_process";
-import { chdir, cwd, platform } from "process";
+import {readdirSync, statSync} from "fs";
+import {mkdirSync, rmSync, writeFileSync} from "fs";
+import {spawnSync} from "child_process";
+import {chdir, cwd, platform} from "process";
 
 interface Annotation {
     file: string;
@@ -22,19 +22,23 @@ function parseAnalyzerOutput(input: string): Annotation[] {
         if (split.length != 4) {
             continue;
         }
-        annotations.push({ file: split[0], line: Number(split[1]), text: split[3] });
+        annotations.push({
+            file: split[0],
+            line: Number(split[1]),
+            text: split[3],
+        });
     }
     return annotations;
 }
 
 const getDirectories = (source: string) =>
-    readdirSync(source, { withFileTypes: true })
+    readdirSync(source, {withFileTypes: true})
         .filter((dirent) => dirent.isDirectory())
         .map((dirent) => dirent.name);
 
 export async function runTests() {
-    const failOnError = core.getBooleanInput("failOnError", { required: false });
-    const analyzers = core.getMultilineInput("analyzers", { required: true });
+    const failOnError = core.getBooleanInput("failOnError", {required: false});
+    const analyzers = core.getMultilineInput("analyzers", {required: true});
 
     for (let i = 0; i < analyzers.length; i++) {
         if (!analyzers[i].includes("@")) {
@@ -47,7 +51,10 @@ export async function runTests() {
         const lastDot = analyzers[i].slice(0, at).lastIndexOf(".");
         const lastSlash = analyzers[i].slice(0, at).lastIndexOf("/");
         if (lastDot < lastSlash || (lastDot === -1 && lastSlash === -1)) {
-            analyzers[i] = analyzers[i].slice(0, at) + ".Analyzer" + analyzers[i].slice(at);
+            analyzers[i] =
+                analyzers[i].slice(0, at) +
+                ".Analyzer" +
+                analyzers[i].slice(at);
         }
     }
 
@@ -56,7 +63,8 @@ export async function runTests() {
 
     for (let analyzer of analyzers) {
         analyzer = analyzer.substring(0, analyzer.lastIndexOf("@"));
-        program += `"` + analyzer.substring(0, analyzer.lastIndexOf(".")) + `";`;
+        program +=
+            `"` + analyzer.substring(0, analyzer.lastIndexOf(".")) + `";`;
     }
     program += ")\n";
 
@@ -71,7 +79,7 @@ export async function runTests() {
 
     const dir = path.join(source, ".temp");
     try {
-        rmSync(dir, { recursive: true, force: true });
+        rmSync(dir, {recursive: true, force: true});
     } catch {}
     mkdirSync(dir);
     writeFileSync(path.join(dir, "check.go"), program);
@@ -82,7 +90,10 @@ export async function runTests() {
     for (const analyzer of analyzers) {
         const at = analyzer.lastIndexOf("@");
         const noVersion = analyzer.substring(0, at);
-        packages.push(noVersion.substring(0, noVersion.lastIndexOf(".")) + analyzer.slice(at));
+        packages.push(
+            noVersion.substring(0, noVersion.lastIndexOf(".")) +
+                analyzer.slice(at)
+        );
     }
     await exec("gofmt", ["-s", "-w", "."]);
     await exec("go", ["mod", "init", "temp"]);
@@ -123,7 +134,9 @@ export async function runTests() {
             ["." + slash + path.relative(".", directory)],
             options
         );
-        const annotations: Annotation[] = parseAnalyzerOutput(output.toString());
+        const annotations: Annotation[] = parseAnalyzerOutput(
+            output.toString()
+        );
         if (output.toString().includes("panic: ")) {
             gotError = true;
             core.error(`Analyzer panic in ${directory}`, {
@@ -146,5 +159,5 @@ export async function runTests() {
         core.setFailed("Got analyzer warnings");
     }
 
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, {recursive: true, force: true});
 }
