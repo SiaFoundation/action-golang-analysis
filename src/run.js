@@ -40,27 +40,47 @@ const exec_1 = require("@actions/exec");
 const core = __importStar(require("@actions/core"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = require("fs");
-const fs_2 = require("fs");
 const process_1 = require("process");
 function parseAnalyzerOutput(input) {
     const lines = input.split("\n");
-    let annotations = [];
+    const annotations = [];
     for (const line of lines) {
         const split = line.split(":");
-        if (split.length != 4) {
-            continue;
+        if (line.startsWith("-: ")) {
+            // Example: -: Client missing method for POST /api/submit
+            annotations.push({
+                text: split.slice(1).join(":"),
+            });
         }
-        annotations.push({ file: split[0], line: Number(split[1]), text: split[3] });
+        else if (split.length === 2) {
+            // Example: japecheck: no Client definition found
+            annotations.push({
+                text: split[1],
+            });
+        }
+        else if (split.length >= 4) {
+            // Most common case - we have file, line number, and text
+            // Example: a/b/c/accounts.go:17:66: Client has wrong request type for POST /account/:id (got <nil>, should be go.sia.tech/renterd/api.AccountHandlerPOST)
+            annotations.push({
+                file: split[0],
+                line: Number(split[1]),
+                text: split.slice(3).join(":"),
+            });
+        }
     }
     return annotations;
 }
-const getDirectories = (source) => (0, fs_1.readdirSync)(source, { withFileTypes: true })
-    .filter((dirent) => dirent.isDirectory())
-    .map((dirent) => dirent.name);
 function runTests() {
     return __awaiter(this, void 0, void 0, function* () {
         const failOnError = core.getBooleanInput("failOnError", { required: false });
         const analyzers = core.getMultilineInput("analyzers", { required: true });
+        const directories_lines = core.getMultilineInput("directories", {
+            required: true,
+        });
+        const directories = [];
+        for (let i = 0; i < directories_lines.length; i++) {
+            directories[i] = directories_lines[i].split(" ");
+        }
         for (let i = 0; i < analyzers.length; i++) {
             if (!analyzers[i].includes("@")) {
                 analyzers[i] += "@HEAD";
@@ -71,14 +91,18 @@ function runTests() {
             const lastDot = analyzers[i].slice(0, at).lastIndexOf(".");
             const lastSlash = analyzers[i].slice(0, at).lastIndexOf("/");
             if (lastDot < lastSlash || (lastDot === -1 && lastSlash === -1)) {
-                analyzers[i] = analyzers[i].slice(0, at) + ".Analyzer" + analyzers[i].slice(at);
+                analyzers[i] =
+                    analyzers[i].slice(0, at) +
+                        ".Analyzer" +
+                        analyzers[i].slice(at);
             }
         }
         let program = "package main\n";
         program += `import ("golang.org/x/tools/go/analysis/multichecker";`;
         for (let analyzer of analyzers) {
             analyzer = analyzer.substring(0, analyzer.lastIndexOf("@"));
-            program += `"` + analyzer.substring(0, analyzer.lastIndexOf(".")) + `";`;
+            program +=
+                `"` + analyzer.substring(0, analyzer.lastIndexOf(".")) + `";`;
         }
         program += ")\n";
         program += "func main() {multichecker.Main(";
@@ -90,17 +114,18 @@ function runTests() {
         const source = (0, process_1.cwd)();
         const dir = path_1.default.join(source, ".temp");
         try {
-            (0, fs_2.rmSync)(dir, { recursive: true, force: true });
+            (0, fs_1.rmSync)(dir, { recursive: true, force: true });
         }
         catch (_a) { }
-        (0, fs_2.mkdirSync)(dir);
-        (0, fs_2.writeFileSync)(path_1.default.join(dir, "check.go"), program);
+        (0, fs_1.mkdirSync)(dir);
+        (0, fs_1.writeFileSync)(path_1.default.join(dir, "check.go"), program);
         (0, process_1.chdir)(dir);
         const packages = ["golang.org/x/tools/go/analysis/multichecker"];
         for (const analyzer of analyzers) {
             const at = analyzer.lastIndexOf("@");
             const noVersion = analyzer.substring(0, at);
-            packages.push(noVersion.substring(0, noVersion.lastIndexOf(".")) + analyzer.slice(at));
+            packages.push(noVersion.substring(0, noVersion.lastIndexOf(".")) +
+                analyzer.slice(at));
         }
         yield (0, exec_1.exec)("gofmt", ["-s", "-w", "."]);
         yield (0, exec_1.exec)("go", ["mod", "init", "temp"]);
@@ -110,11 +135,7 @@ function runTests() {
         (0, process_1.chdir)(source);
         let gotError = false;
         core.startGroup(`Analyzer output`);
-        const directories = getDirectories(".");
-        for (const directory of directories) {
-            if (directory.startsWith(".")) {
-                continue;
-            }
+        for (const dirs of directories) {
             let output = "";
             const options = {
                 ignoreReturnCode: true,
@@ -131,29 +152,38 @@ function runTests() {
             if (process_1.platform === "win32") {
                 slash = "\\";
             }
-            yield (0, exec_1.exec)(path_1.default.join(dir, "check.exe"), ["." + slash + path_1.default.relative(".", directory)], options);
+            const args = [];
+            for (const dir of dirs) {
+                args.push("." + slash + path_1.default.relative(".", dir));
+            }
+            yield (0, exec_1.exec)(path_1.default.join(dir, "check.exe"), args, options);
             const annotations = parseAnalyzerOutput(output.toString());
             if (output.toString().includes("panic: ")) {
                 gotError = true;
-                core.error(`Analyzer panic in ${directory}`, {
-                    title: `Analyzer panic in ${directory}`,
+                core.error(`Analyzer panic in ${dirs}`, {
+                    title: `Analyzer panic in ${dirs}`,
                 });
                 continue;
             }
             for (const annotation of annotations) {
                 gotError = true;
-                core.error(annotation.text, {
-                    title: `Analyzer warning in ${directory}`,
-                    file: path_1.default.relative(".", annotation.file),
-                    startLine: annotation.line,
-                });
+                const result = {
+                    title: `Analyzer warning in ${dirs}`,
+                };
+                if (annotation.file !== undefined) {
+                    result.file = path_1.default.relative(".", annotation.file);
+                }
+                if (annotation.line !== undefined) {
+                    result.startLine = annotation.line;
+                }
+                core.error(annotation.text, result);
             }
         }
         core.endGroup();
         if (gotError && failOnError) {
             core.setFailed("Got analyzer warnings");
         }
-        (0, fs_2.rmSync)(dir, { recursive: true, force: true });
+        (0, fs_1.rmSync)(dir, { recursive: true, force: true });
     });
 }
 exports.runTests = runTests;
