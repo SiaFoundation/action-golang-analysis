@@ -1,40 +1,58 @@
-import { exec } from "@actions/exec";
+import {exec} from "@actions/exec";
 import * as core from "@actions/core";
-import { env } from "process";
+import {env} from "process";
 import path from "path";
-import { readdirSync, statSync } from "fs";
-import { mkdirSync, rmSync, writeFileSync } from "fs";
-import { spawnSync } from "child_process";
-import { chdir, cwd, platform } from "process";
+import {readdirSync, statSync} from "fs";
+import {mkdirSync, rmSync, writeFileSync} from "fs";
+import {spawnSync} from "child_process";
+import {chdir, cwd, platform} from "process";
 
 interface Annotation {
-    file: string;
-    line: number;
+    file?: string;
+    line?: number;
     text: string;
 }
 
 function parseAnalyzerOutput(input: string): Annotation[] {
     const lines = input.split("\n");
 
-    let annotations: Annotation[] = [];
+    const annotations: Annotation[] = [];
     for (const line of lines) {
         const split = line.split(":");
-        if (split.length != 4) {
-            continue;
+        if (line.startsWith("-: ")) {
+            // Example: -: Client missing method for POST /api/submit
+            annotations.push({
+                text: split.slice(1).join(":"),
+            });
+        } else if (split.length === 2) {
+            // Example: japecheck: no Client definition found
+            annotations.push({
+                text: split[1],
+            });
+        } else if (split.length >= 4) {
+            // Most common case - we have file, line number, and text
+            // Example: a/b/c/accounts.go:17:66: Client has wrong request type for POST /account/:id (got <nil>, should be go.sia.tech/renterd/api.AccountHandlerPOST)
+            annotations.push({
+                file: split[0],
+                line: Number(split[1]),
+                text: split.slice(3).join(":"),
+            });
         }
-        annotations.push({ file: split[0], line: Number(split[1]), text: split[3] });
     }
     return annotations;
 }
 
-const getDirectories = (source: string) =>
-    readdirSync(source, { withFileTypes: true })
-        .filter((dirent) => dirent.isDirectory())
-        .map((dirent) => dirent.name);
-
 export async function runTests() {
-    const failOnError = core.getBooleanInput("failOnError", { required: false });
-    const analyzers = core.getMultilineInput("analyzers", { required: true });
+    const failOnError = core.getBooleanInput("failOnError", {required: false});
+    const analyzers = core.getMultilineInput("analyzers", {required: true});
+    const directories_lines = core.getMultilineInput("directories", {
+        required: true,
+    });
+
+    const directories: string[][] = [];
+    for (let i = 0; i < directories_lines.length; i++) {
+        directories[i] = directories_lines[i].split(" ");
+    }
 
     for (let i = 0; i < analyzers.length; i++) {
         if (!analyzers[i].includes("@")) {
@@ -47,7 +65,10 @@ export async function runTests() {
         const lastDot = analyzers[i].slice(0, at).lastIndexOf(".");
         const lastSlash = analyzers[i].slice(0, at).lastIndexOf("/");
         if (lastDot < lastSlash || (lastDot === -1 && lastSlash === -1)) {
-            analyzers[i] = analyzers[i].slice(0, at) + ".Analyzer" + analyzers[i].slice(at);
+            analyzers[i] =
+                analyzers[i].slice(0, at) +
+                ".Analyzer" +
+                analyzers[i].slice(at);
         }
     }
 
@@ -56,7 +77,8 @@ export async function runTests() {
 
     for (let analyzer of analyzers) {
         analyzer = analyzer.substring(0, analyzer.lastIndexOf("@"));
-        program += `"` + analyzer.substring(0, analyzer.lastIndexOf(".")) + `";`;
+        program +=
+            `"` + analyzer.substring(0, analyzer.lastIndexOf(".")) + `";`;
     }
     program += ")\n";
 
@@ -71,7 +93,7 @@ export async function runTests() {
 
     const dir = path.join(source, ".temp");
     try {
-        rmSync(dir, { recursive: true, force: true });
+        rmSync(dir, {recursive: true, force: true});
     } catch {}
     mkdirSync(dir);
     writeFileSync(path.join(dir, "check.go"), program);
@@ -82,7 +104,10 @@ export async function runTests() {
     for (const analyzer of analyzers) {
         const at = analyzer.lastIndexOf("@");
         const noVersion = analyzer.substring(0, at);
-        packages.push(noVersion.substring(0, noVersion.lastIndexOf(".")) + analyzer.slice(at));
+        packages.push(
+            noVersion.substring(0, noVersion.lastIndexOf(".")) +
+                analyzer.slice(at)
+        );
     }
     await exec("gofmt", ["-s", "-w", "."]);
     await exec("go", ["mod", "init", "temp"]);
@@ -94,12 +119,7 @@ export async function runTests() {
 
     let gotError = false;
     core.startGroup(`Analyzer output`);
-    const directories = getDirectories(".");
-    for (const directory of directories) {
-        if (directory.startsWith(".")) {
-            continue;
-        }
-
+    for (const dirs of directories) {
         let output: string = "";
         const options = {
             ignoreReturnCode: true,
@@ -118,26 +138,34 @@ export async function runTests() {
             slash = "\\";
         }
 
-        await exec(
-            path.join(dir, "check.exe"),
-            ["." + slash + path.relative(".", directory)],
-            options
+        const args: string[] = [];
+        for (const dir of dirs) {
+            args.push("." + slash + path.relative(".", dir));
+        }
+        await exec(path.join(dir, "check.exe"), args, options);
+        const annotations: Annotation[] = parseAnalyzerOutput(
+            output.toString()
         );
-        const annotations: Annotation[] = parseAnalyzerOutput(output.toString());
         if (output.toString().includes("panic: ")) {
             gotError = true;
-            core.error(`Analyzer panic in ${directory}`, {
-                title: `Analyzer panic in ${directory}`,
+            core.error(`Analyzer panic in ${dirs}`, {
+                title: `Analyzer panic in ${dirs}`,
             });
             continue;
         }
         for (const annotation of annotations) {
             gotError = true;
-            core.error(annotation.text, {
-                title: `Analyzer warning in ${directory}`,
-                file: path.relative(".", annotation.file),
-                startLine: annotation.line,
-            });
+
+            const result: core.AnnotationProperties = {
+                title: `Analyzer warning in ${dirs}`,
+            };
+            if (annotation.file !== undefined) {
+                result.file = path.relative(".", annotation.file);
+            }
+            if (annotation.line !== undefined) {
+                result.startLine = annotation.line;
+            }
+            core.error(annotation.text, result);
         }
     }
     core.endGroup();
@@ -146,5 +174,5 @@ export async function runTests() {
         core.setFailed("Got analyzer warnings");
     }
 
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, {recursive: true, force: true});
 }
