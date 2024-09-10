@@ -11,6 +11,7 @@ A list of `analyzers` is required.
 analyzers | string | Multiline list of analyzers | none
 directories | string | Multiline list of directories to pass to the analyzers.  If multiple directories are to be passed simultaneously, place them on the same line and separate them with a space.  | none
 failOnError | bool | Whether to fail if analyzer finds errors  | true
+flags | string | Flags to pass to analyzer.  Prefix each flag with its analyzer Name, i.e. japecheck.cprefix. | none
 
 ## Usage
 
@@ -36,4 +37,7 @@ jobs:
             autopilot
             bus bus/client
             worker worker/client
+          flags: |
+            -japecheck.cprefix="/api"
+            -japecheck.types=false
 ```

@@ -12,6 +12,10 @@ inputs:
   directories:
     description: List of directories to pass to the analyzers.  If multiple directories are to be passed simultaneously, place them on the same line and separate them with a space.
     required: true
+  flags:
+    description: Flags to pass to analyzer.  Prefix each flag with its analyzer Name, i.e. japecheck.cprefix.
+    required: false
+    default: ""
 runs:
   using: "node16"
   main: "dist/index.js"

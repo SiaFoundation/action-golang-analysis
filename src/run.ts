@@ -45,6 +45,7 @@ function parseAnalyzerOutput(input: string): Annotation[] {
 export async function runTests() {
     const failOnError = core.getBooleanInput("failOnError", {required: false});
     const analyzers = core.getMultilineInput("analyzers", {required: true});
+    const flags = core.getMultilineInput("flags", {required: false});
     const directories_lines = core.getMultilineInput("directories", {
         required: true,
     });
@@ -139,6 +140,9 @@ export async function runTests() {
         }
 
         const args: string[] = [];
+        for (const flag of flags) {
+            args.push(flag);
+        }
         for (const dir of dirs) {
             args.push("." + slash + path.relative(".", dir));
         }
